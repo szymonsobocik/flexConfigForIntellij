@@ -1,9 +1,9 @@
 package pl.com.sobsoft.maven;
 
+import org.apache.maven.monitor.logging.DefaultLog;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.codehaus.plexus.logging.console.ConsoleLogger;
 import org.jdom2.Attribute;
 import org.jdom2.Document;
 import org.jdom2.Element;
@@ -15,11 +15,10 @@ import org.jdom2.output.XMLOutputter;
 import org.jdom2.xpath.XPathExpression;
 import org.jdom2.xpath.XPathFactory;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.FilenameFilter;
-import java.io.IOException;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 
 public class FixIntellijConfigMojo extends AbstractMojo {
@@ -27,6 +26,13 @@ public class FixIntellijConfigMojo extends AbstractMojo {
     private String flexSDK;
     private String jdkTypeFlex;
     private String targetPlayer;
+    private boolean searchRecursively;
+
+    private List<File> imlFiles;
+
+    public void setSearchRecursively(boolean searchRecursively) {
+        this.searchRecursively = searchRecursively;
+    }
 
     public void setProjectDirectory(File projectDirectory) {
         this.projectDirectory = projectDirectory;
@@ -46,26 +52,60 @@ public class FixIntellijConfigMojo extends AbstractMojo {
 
     public void execute() throws MojoExecutionException {
 
-        getLog().info("Project directory: " + projectDirectory.toString());
-        runInDirectory(projectDirectory);
-
-
-
-        File[] imlFiles = projectDirectory.listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String name) {
-                return name != null && name.endsWith(".iml");
-            }
-        });
-
-        if (imlFiles == null || imlFiles.length == 0){
+        try {
+            readProperties();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             return;
         }
 
-        getLog().info("Iml files: ");
-        for (File imlFile : imlFiles) {
-            getLog().info(imlFile.getName());
+        getLog().info("Project directory: " + this.projectDirectory.toString());
+        this.imlFiles = new ArrayList<File>();
+        findImlFilesRecursively(this.projectDirectory);
+        processImlFiles(this.imlFiles);
+    }
+
+    private void readProperties() throws IOException {
+        Properties prop = new Properties();
+        InputStream resourceAsStream = this.getClass().getResourceAsStream("flexConfigForIntellij.properties");
+        prop.load(resourceAsStream);
+
+        File workDir = new File(System.getProperty("user.dir"));
+
+        String projectDirectory = prop.getProperty("projectDirectory");
+        if (projectDirectory != null && !projectDirectory.trim().equals("")){
+            workDir = new File(projectDirectory);
         }
+
+        setProjectDirectory(workDir);
+        setFlexSDK(prop.getProperty("flexSDK"));
+        setJdkTypeFlex(prop.getProperty("jdkTypeFlex"));
+        setTargetPlayer(prop.getProperty("targetPlayer"));
+        setLog(new DefaultLog(new ConsoleLogger()));
+        setSearchRecursively("true".equals(prop.getProperty("recursively")));
+    }
+
+    private void findImlFilesRecursively(File file) {
+        if (file == null){
+            return;
+        }
+
+        if (file.getName().endsWith(".iml")){
+            addToImlFiles(file);
+        } else if (this.searchRecursively && file.isDirectory() && !file.getName().endsWith(".git")) {
+            for (File fileIn : file.listFiles()) {
+                findImlFilesRecursively(fileIn);
+            }
+        }
+    }
+
+    private void processImlFiles(List<File> imlFiles) {
+        if (imlFiles == null || imlFiles.isEmpty()){
+            getLog().info("No IML files found");
+            return;
+        }
+
+        getLog().info("Found " + imlFiles.size() + " iml files. Processing...");
 
         for (File imlFile : imlFiles) {
             try {
@@ -76,18 +116,18 @@ public class FixIntellijConfigMojo extends AbstractMojo {
                 getLog().error(e);  //To change body of catch statement use File | Settings | File Templates.
             }
         }
-
     }
 
-    private void runInDirectory(File projectDirectory) {
-        //To change body of created methods use File | Settings | File Templates.
+
+    private void addToImlFiles(File file) {
+        this.imlFiles.add(file);
     }
 
     private void editIMLFile(File imlFile) throws JDOMException, IOException {
+        getLog().info("Processing : " + imlFile.getAbsolutePath());
 
         SAXBuilder saxBuilder = new SAXBuilder();
         Document doc = saxBuilder.build(imlFile);
-        Element rootElement = doc.getRootElement();
         XPathExpression<Attribute> xpathAttribute = XPathFactory.instance().compile("/module/@type", Filters.attribute());
         Attribute type = xpathAttribute.evaluateFirst(doc);
         if (type != null && !type.getValue().equals("Flex")) {
