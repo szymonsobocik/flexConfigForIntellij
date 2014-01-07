@@ -1,12 +1,8 @@
 package pl.com.sobsoft.maven;
 
-import org.apache.maven.monitor.logging.DefaultLog;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.codehaus.plexus.logging.console.ConsoleLogger;
+import org.apache.log4j.BasicConfigurator;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,7 +13,8 @@ import java.util.Properties;
  */
 public class Start {
 
-    public static void main(String[] args) throws MojoExecutionException, IOException {
+    public static void main(String[] args) throws IOException {
+        BasicConfigurator.configure();
 
         FixIntellijConfigMojo fixConfigMojo = new FixIntellijConfigMojo();
         fixConfigMojo.execute();

@@ -1,9 +1,6 @@
 package pl.com.sobsoft.maven;
 
-import org.apache.maven.monitor.logging.DefaultLog;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.codehaus.plexus.logging.console.ConsoleLogger;
+import org.apache.log4j.Logger;
 import org.jdom2.Attribute;
 import org.jdom2.Document;
 import org.jdom2.Element;
@@ -21,14 +18,20 @@ import java.util.List;
 import java.util.Properties;
 
 
-public class FixIntellijConfigMojo extends AbstractMojo {
+public class FixIntellijConfigMojo {
     private File projectDirectory;
     private String flexSDK;
     private String jdkTypeFlex;
     private String targetPlayer;
     private boolean searchRecursively;
 
+    private Logger logger = Logger.getLogger(this.getClass());
+
     private List<File> imlFiles;
+
+    public Logger getLog() {
+        return logger;
+    }
 
     public void setSearchRecursively(boolean searchRecursively) {
         this.searchRecursively = searchRecursively;
@@ -50,14 +53,9 @@ public class FixIntellijConfigMojo extends AbstractMojo {
         this.targetPlayer = targetPlayer;
     }
 
-    public void execute() throws MojoExecutionException {
+    public void execute() throws IOException {
 
-        try {
             readProperties();
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            return;
-        }
 
         getLog().info("Project directory: " + this.projectDirectory.toString());
         this.imlFiles = new ArrayList<File>();
@@ -81,7 +79,6 @@ public class FixIntellijConfigMojo extends AbstractMojo {
         setFlexSDK(prop.getProperty("flexSDK"));
         setJdkTypeFlex(prop.getProperty("jdkTypeFlex"));
         setTargetPlayer(prop.getProperty("targetPlayer"));
-        setLog(new DefaultLog(new ConsoleLogger()));
         setSearchRecursively("true".equals(prop.getProperty("recursively")));
     }
 
