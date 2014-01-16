@@ -138,11 +138,13 @@ public class FixIntellijConfigMojo {
         dependenciesElement.setAttribute("target-player", targetPlayer);
         dependenciesElement.setAttribute("framework-linkage", "Merged");
 
+        detachElements(doc, "/module/component[@name='FlexBuildConfigurationManager']/configurations/configuration/dependencies/entries/entry[starts-with(@library-name, 'Maven: org.apache.flex.framework')]");
         detachElements(doc, "/module/component[@name='FlexBuildConfigurationManager']/configurations/configuration/dependencies/entries/entry[starts-with(@library-name, 'Maven: com.adobe.flex.framework')]");
         detachElements(doc, "/module/component[@name='FlexBuildConfigurationManager']/configurations/configuration/compiler-options/option[@name='additionalConfigFilePath']");
         detachElements(doc, "/module/component[@name='NewModuleRootManager']/orderEntry[starts-with(@name, 'Maven: com.adobe.flex.framework')]");
 
         xPathElement = XPathFactory.instance().compile("/module/component[@name='FlexBuildConfigurationManager']/configurations/configuration/dependencies/sdk", Filters.element());
+
         Element sdkElement = xPathElement.evaluateFirst(doc);
         sdkElement.setAttribute("name", flexSDK);
 
